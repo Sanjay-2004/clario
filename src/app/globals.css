@@ -289,3 +289,7 @@ body::before {
 .cat-health { color: #10b981; }
 .cat-education { color: #06b6d4; }
 .cat-other { color: #64748b; }
+
+#devtools-indicator, .nextjs-toast {
+  display: none !important;
+}
