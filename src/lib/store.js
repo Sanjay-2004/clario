@@ -16,6 +16,7 @@ function getSupabase() {
 function useSupabaseTable(table, options = {}) {
   const [data, setData] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [lastError, setLastError] = useState(null);
   const { orderBy = 'created_at' } = options;
 
   const fetchData = useCallback(async () => {
@@ -26,7 +27,12 @@ function useSupabaseTable(table, options = {}) {
       .select('*')
       .order(orderBy, { ascending: true });
 
-    if (!error && rows) setData(rows);
+    if (error) {
+      setLastError(error.message || 'Failed to load data');
+    } else if (rows) {
+      setData(rows);
+      setLastError(null);
+    }
     setLoaded(true);
   }, [table, orderBy]);
 
@@ -34,9 +40,15 @@ function useSupabaseTable(table, options = {}) {
 
   const add = useCallback(async (item) => {
     const sb = getSupabase();
-    if (!sb) return null;
+    if (!sb) {
+      setLastError('Supabase is not configured.');
+      return { data: null, error: 'Supabase is not configured.' };
+    }
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return null;
+    if (!user) {
+      setLastError('Please sign in to continue.');
+      return { data: null, error: 'Please sign in to continue.' };
+    }
 
     const row = { ...item, user_id: user.id };
     const { data: inserted, error } = await sb
@@ -45,40 +57,70 @@ function useSupabaseTable(table, options = {}) {
       .select()
       .single();
 
-    if (!error && inserted) {
-      setData(prev => [...prev, inserted]);
-      return inserted;
+    if (error) {
+      setLastError(error.message || 'Failed to add item');
+      return { data: null, error: error.message || 'Failed to add item' };
     }
-    return null;
+
+    if (inserted) {
+      setData(prev => [...prev, inserted]);
+      setLastError(null);
+      return { data: inserted, error: null };
+    }
+
+    setLastError('Failed to add item');
+    return { data: null, error: 'Failed to add item' };
   }, [table]);
 
   const update = useCallback(async (id, updates) => {
     const sb = getSupabase();
-    if (!sb) return;
+    if (!sb) {
+      setLastError('Supabase is not configured.');
+      return { error: 'Supabase is not configured.' };
+    }
     const { error } = await sb
       .from(table)
       .update(updates)
       .eq('id', id);
 
+    if (error) {
+      setLastError(error.message || 'Failed to update item');
+      return { error: error.message || 'Failed to update item' };
+    }
+
     if (!error) {
       setData(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+      setLastError(null);
     }
+
+    return { error: null };
   }, [table]);
 
   const remove = useCallback(async (id) => {
     const sb = getSupabase();
-    if (!sb) return;
+    if (!sb) {
+      setLastError('Supabase is not configured.');
+      return { error: 'Supabase is not configured.' };
+    }
     const { error } = await sb
       .from(table)
       .delete()
       .eq('id', id);
 
+    if (error) {
+      setLastError(error.message || 'Failed to delete item');
+      return { error: error.message || 'Failed to delete item' };
+    }
+
     if (!error) {
       setData(prev => prev.filter(item => item.id !== id));
+      setLastError(null);
     }
+
+    return { error: null };
   }, [table]);
 
-  return { data, loaded, add, update, remove, refetch: fetchData };
+  return { data, loaded, lastError, add, update, remove, refetch: fetchData };
 }
 
 export function useIncome() {

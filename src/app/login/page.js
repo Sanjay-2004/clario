@@ -6,9 +6,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   async function handleGoogleLogin() {
     setLoading(true);
+    setAuthError('');
     const supabase = createClient();
     if (!supabase) { alert('Supabase not configured'); setLoading(false); return; }
     const { error } = await supabase.auth.signInWithOAuth({
@@ -17,13 +19,25 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-    if (error) { alert(error.message); setLoading(false); }
+    if (error) {
+      const unsupportedProvider =
+        error.code === 'validation_failed' &&
+        /Unsupported provider/i.test(error.message || '');
+
+      if (unsupportedProvider) {
+        setAuthError('Google sign-in is disabled in Supabase. Enable Google in Authentication > Providers and save your Google OAuth client credentials.');
+      } else {
+        alert(error.message);
+      }
+      setLoading(false);
+    }
   }
 
   async function handleMagicLink(e) {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
+    setAuthError('');
     const supabase = createClient();
     if (!supabase) { alert('Supabase not configured'); setLoading(false); return; }
     const { error } = await supabase.auth.signInWithOtp({
@@ -44,6 +58,22 @@ export default function LoginPage() {
       </div>
 
       <div className="card" style={{ padding: 28 }}>
+        {authError && (
+          <div
+            style={{
+              background: '#fff4e5',
+              border: '1px solid #ffd199',
+              color: '#8a4b08',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              fontSize: '0.85rem',
+              marginBottom: 16,
+            }}
+          >
+            {authError}
+          </div>
+        )}
+
         {/* Google Login */}
         <button
           onClick={handleGoogleLogin}

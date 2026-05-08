@@ -4,34 +4,55 @@ import { useIncome, formatCurrency } from '@/lib/store';
 import Modal from '@/components/Modal';
 
 export default function IncomePage() {
-  const { data, loaded, add, update, remove } = useIncome();
+  const { data, loaded, add, update, remove, lastError } = useIncome();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [formError, setFormError] = useState('');
   const [form, setForm] = useState({ source: '', amount: '', frequency: 'monthly', date: new Date().toISOString().split('T')[0] });
 
   const totalMonthly = data.filter(i => i.frequency === 'monthly').reduce((s, i) => s + Number(i.amount), 0);
 
   function openAdd() {
     setEditing(null);
+    setFormError('');
     setForm({ source: '', amount: '', frequency: 'monthly', date: new Date().toISOString().split('T')[0] });
     setShowModal(true);
   }
 
   function openEdit(item) {
     setEditing(item);
+    setFormError('');
     setForm({ source: item.source, amount: item.amount, frequency: item.frequency, date: item.date?.split('T')[0] || '' });
     setShowModal(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.source || !form.amount) return;
-    const payload = { ...form, amount: Number(form.amount) };
-    if (editing) {
-      await update(editing.id, payload);
-    } else {
-      await add(payload);
+    if (!form.source || !form.amount) {
+      setFormError('Source and amount are required.');
+      return;
     }
+
+    if (Number(form.amount) <= 0) {
+      setFormError('Amount must be greater than 0.');
+      return;
+    }
+
+    setFormError('');
+    const payload = { ...form, amount: Number(form.amount) };
+    let result;
+
+    if (editing) {
+      result = await update(editing.id, payload);
+    } else {
+      result = await add(payload);
+    }
+
+    if (result?.error) {
+      setFormError(result.error);
+      return;
+    }
+
     setShowModal(false);
   }
 
@@ -58,6 +79,22 @@ export default function IncomePage() {
           <div style={{ fontSize: '2.5rem' }}>💰</div>
         </div>
       </div>
+
+      {lastError && (
+        <div
+          style={{
+            marginBottom: 16,
+            background: '#fff4e5',
+            border: '1px solid #ffd199',
+            color: '#8a4b08',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 12px',
+            fontSize: '0.85rem',
+          }}
+        >
+          {lastError}
+        </div>
+      )}
 
       {/* Income List */}
       {data.length === 0 ? (
@@ -96,6 +133,22 @@ export default function IncomePage() {
       {/* Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Income' : 'Add Income'}>
         <form onSubmit={handleSubmit}>
+          {formError && (
+            <div
+              style={{
+                marginBottom: 12,
+                background: '#fff4e5',
+                border: '1px solid #ffd199',
+                color: '#8a4b08',
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 12px',
+                fontSize: '0.85rem',
+              }}
+            >
+              {formError}
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">Source Name</label>
             <input type="text" className="form-input" placeholder="e.g. Salary, Freelance" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} autoFocus />
