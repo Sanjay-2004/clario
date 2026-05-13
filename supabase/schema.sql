@@ -23,8 +23,16 @@ CREATE TABLE fixed_expenses (
   amount NUMERIC NOT NULL,
   due_date INTEGER NOT NULL DEFAULT 1,
   category TEXT NOT NULL DEFAULT 'emi',
+  months_left INTEGER,
+  principal_amount NUMERIC,
+  interest_rate NUMERIC,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Backward-compatible migration for existing projects
+ALTER TABLE fixed_expenses ADD COLUMN IF NOT EXISTS months_left INTEGER;
+ALTER TABLE fixed_expenses ADD COLUMN IF NOT EXISTS principal_amount NUMERIC;
+ALTER TABLE fixed_expenses ADD COLUMN IF NOT EXISTS interest_rate NUMERIC;
 
 -- Cards table
 CREATE TABLE cards (

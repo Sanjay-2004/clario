@@ -207,6 +207,7 @@ body::before {
 .chip-green { background: var(--accent-green-glow); color: var(--accent-green); }
 .chip-red { background: var(--accent-red-glow); color: var(--accent-red); }
 .chip-yellow { background: var(--accent-yellow-glow); color: var(--accent-yellow); }
+.chip-blue { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
 
 /* Tabs */
 .tabs { display: flex; gap: 4px; background: var(--bg-input); border-radius: var(--radius-full); padding: 4px; margin-bottom: 20px; }
